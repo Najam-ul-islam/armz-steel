@@ -61,3 +61,8 @@ npx prisma generate
 # prisma  schema.config file
 # change the databse url
 # change the database name
+
+
+datasource db { provider = "sqlite" url = "file:./dev.db" }
+
+# Here, "file:./dev.db" indicates that the SQLite database file dev.db is located in the root directory # of your project.
