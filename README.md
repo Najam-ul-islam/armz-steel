@@ -35,3 +35,29 @@ npm run dev
 # Push to the branch (git push origin feature-branch)
 
 # Create a new Pull Request
+
+
+# Database Migration
+# To manage database migrations with Prisma ORM, follow these steps:
+# 1- Install Prisma CLI (if not already installed):
+npm install -g prisma
+
+# 2- Initialize Prisma in your project (if not already initialized):
+
+npx prisma init
+
+# 3- Define your data model in prisma/schema.prisma
+
+# 4- Create a new migration:
+npx prisma migrate dev --name init
+# Replace init with a meaningful name for your migration.
+
+# 5- Apply the migration and generate the Prisma Client:
+
+npx prisma migrate dev
+npx prisma generate
+
+# if you want to change the database configuration for your application you can do so here and in your
+# prisma  schema.config file
+# change the databse url
+# change the database name
