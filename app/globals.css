@@ -80,3 +80,23 @@
     @apply bg-background text-foreground;
   }
 }
+
+@media print {
+  /* Hide unnecessary elements like headers and footers */
+  header, footer {
+    display: none !important;
+  }
+
+  body {
+    margin-top: 70mm;
+    margin-bottom: 20mm;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .invoice-container {
+    page-break-inside: avoid;
+  }
+}

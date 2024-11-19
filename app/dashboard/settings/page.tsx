@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -22,47 +21,117 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect, useState } from "react";
+import { useToast } from "@/components/ui/use-toast";
 
 const settingsFormSchema = z.object({
   companyName: z.string().min(2, "Company name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   currency: z.string().min(1, "Please select a currency"),
-  lowStockThreshold: z.number().min(0, "Threshold must be positive"),
+  lowStockThreshold: z.preprocess(
+    (value) => (value === "" ? undefined : Number(value)),
+    z.number().min(0, "Threshold must be positive")
+  ),
   notifications: z.boolean(),
   address: z.string().optional(),
 });
 
-const currencies = [
-  { label: "USD ($)", value: "USD" },
-  { label: "EUR (€)", value: "EUR" },
-  { label: "GBP (£)", value: "GBP" },
-];
+const currencies = [{ label: "PKR", value: "PKR" }];
+
+interface SystemInfo {
+  version: string;
+  lastBackup: string;
+  dbSize: string;
+  totalUsers: number;
+}
 
 export default function SettingsPage() {
+  const { toast } = useToast();
+
+  const [systemInfo, setSystemInfo] = useState<SystemInfo>({
+    version: "1.0.0",
+    lastBackup: "Never",
+    dbSize: "Unknown",
+    totalUsers: 0,
+  });
+
   const form = useForm<z.infer<typeof settingsFormSchema>>({
     resolver: zodResolver(settingsFormSchema),
     defaultValues: {
-      companyName: "Steel Mill Co.",
-      email: "admin@steelmill.com",
-      currency: "USD",
-      lowStockThreshold: 10,
-      notifications: true,
-      address: "",
+      companyName: "", // Ensure this is an empty string or a default value
+      email: "", // Same for email
+      currency: "", // Default to an empty string or a valid currency value
+      lowStockThreshold: 0, // Ensure this is a number (0 is safe)
+      notifications: false, // Default boolean
+      address: "", // Default empty string
     },
   });
 
-  function onSubmit(data: z.infer<typeof settingsFormSchema>) {
-    console.log(data);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      // Fetch and set system info from localStorage
+      const savedInfo = localStorage.getItem("systemInfo");
+      if (savedInfo) {
+        setSystemInfo(JSON.parse(savedInfo));
+      }
+
+      // Set form default values from localStorage, ensuring fallback to safe defaults
+      const savedForm = localStorage.getItem("settingsForm");
+      if (savedForm) {
+        form.reset(JSON.parse(savedForm));
+      } else {
+        // If no saved form, reset to default values (already handled by useForm defaults)
+        form.reset({
+          companyName: "",
+          email: "",
+          currency: "",
+          lowStockThreshold: 0,
+          notifications: false,
+          address: "",
+        });
+      }
+    }
+  }, [form]);
+
+  async function onSubmit(data: z.infer<typeof settingsFormSchema>) {
+    try {
+      if (typeof window !== "undefined") {
+        // Save settings form data to localStorage
+        localStorage.setItem("settingsForm", JSON.stringify(data));
+
+        // Trigger success notification
+        toast({
+          title: "Settings Saved",
+          description: "Your changes have been saved successfully.",
+          variant: "default", // optional, depending on your toast implementation
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save settings. Please try again.",
+        variant: "destructive",
+      });
+    }
   }
+
 
   return (
     <div className="flex-1 space-y-4 p-8 pt-6">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight">Settings</h2>
-        <Button type="submit" form="settings-form">
+        {/* <Button type="submit" form="settings-form">
+          Save Changes
+        </Button> */}
+        <Button
+          type="submit"
+          form="settings-form"
+          onClick={() => {
+            form.handleSubmit(onSubmit)();
+          }}
+        >
           Save Changes
         </Button>
       </div>
@@ -86,7 +155,10 @@ export default function SettingsPage() {
                     <FormItem>
                       <FormLabel>Company Name</FormLabel>
                       <FormControl>
-                        <Input {...field} />
+                        <Input
+                          {...field}
+                          value={field.value || ""} // Ensure the value is controlled
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -115,7 +187,7 @@ export default function SettingsPage() {
                       <FormLabel>Currency</FormLabel>
                       <Select
                         onValueChange={field.onChange}
-                        defaultValue={field.value}
+                        value={field.value || ""}
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -143,43 +215,11 @@ export default function SettingsPage() {
                   name="lowStockThreshold"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Low Stock Threshold (%)</FormLabel>
+                      <FormLabel>Low Stock Threshold</FormLabel>
                       <FormControl>
-                        <Input
-                          type="number"
-                          {...field}
-                          onChange={(e) =>
-                            field.onChange(parseInt(e.target.value, 10))
-                          }
-                        />
+                        <Input {...field} type="number" />
                       </FormControl>
-                      <FormDescription>
-                        Percentage of minimum stock level to trigger alerts
-                      </FormDescription>
                       <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="notifications"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                      <div className="space-y-0.5">
-                        <FormLabel className="text-base">
-                          Email Notifications
-                        </FormLabel>
-                        <FormDescription>
-                          Receive alerts for low stock and important updates
-                        </FormDescription>
-                      </div>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
                     </FormItem>
                   )}
                 />
@@ -211,28 +251,21 @@ export default function SettingsPage() {
               <h4 className="text-sm font-medium text-muted-foreground mb-1">
                 Version
               </h4>
-              <p className="text-sm">1.0.0</p>
+              <p className="text-sm">{systemInfo.version}</p>
             </div>
             <Separator />
             <div>
               <h4 className="text-sm font-medium text-muted-foreground mb-1">
                 Last Backup
               </h4>
-              <p className="text-sm">March 10, 2024 09:30 AM</p>
+              <p className="text-sm">{systemInfo.lastBackup}</p>
             </div>
             <Separator />
             <div>
               <h4 className="text-sm font-medium text-muted-foreground mb-1">
                 Database Size
               </h4>
-              <p className="text-sm">256 MB</p>
-            </div>
-            <Separator />
-            <div>
-              <h4 className="text-sm font-medium text-muted-foreground mb-1">
-                Total Users
-              </h4>
-              <p className="text-sm">5</p>
+              <p className="text-sm">{systemInfo.dbSize}</p>
             </div>
           </CardContent>
         </Card>
